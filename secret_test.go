@@ -10,12 +10,18 @@ func init() {
 
 func TestKey(t *testing.T) {
 	plaintext := "some really really really long plaintext"
-	ciphertext := encrypt(private_key, []byte(plaintext))
-    if string(ciphertext) == plaintext {
-        t.Error("plaintext not converted")
-    }
-	result := decrypt(private_key, ciphertext)
-    if result != plaintext {
-        t.Error("plaintext not recovered")
-    }
+	ciphertext, err := encrypt(private_key, []byte(plaintext))
+	if err != nil {
+		t.Error(err)
+	}
+	if string(ciphertext) == plaintext {
+		t.Error("plaintext not converted")
+	}
+	result, err := decrypt(private_key, ciphertext)
+	if err != nil {
+		t.Error(err)
+	}
+	if result != plaintext {
+		t.Error("plaintext not recovered")
+	}
 }

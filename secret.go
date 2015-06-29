@@ -7,16 +7,90 @@ import (
 	"crypto/cipher"
 	"crypto/md5"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"hash/crc32"
 	"io"
+	"strings"
+	"time"
+)
+
+const tokenLayout = "2006-01-02@15:04:05"
+
+var (
+	ErrIncomplete = fmt.Errorf("missing data")
+	ErrChecksum   = fmt.Errorf("checksum does not match")
+	ErrCipherText = fmt.Errorf("ciphertext too short")
+	ErrKeyExpired = fmt.Errorf("key expired")
+	ErrBadSecret  = fmt.Errorf("bad secret")
 )
 
 var (
-    // to change without modifying the code: 
-    // go build/test/install -ldflags "-X secrets.salty my-new-salt-string"
-	salty  = "add salt to taste"
-    private_key []byte
+	active = make(map[string]KeySpan)
+)
+
+// Time period the cert is valid for
+type KeySpan struct {
+	from, to time.Time
+}
+
+func (k KeySpan) String() string {
+	return fmt.Sprintf("FROM:%s TO:%s\n", k.from.Format(tokenLayout), k.to.Format(tokenLayout))
+}
+
+// create a "certificate hash) that includes the time it is valid for
+func NewCert(from, to time.Time) (string, error) {
+	k, err := keyGen()
+	if err != nil {
+		return "", err
+	}
+	s, err := encryptString(strings.Join([]string{
+		from.Format(tokenLayout),
+		to.Format(tokenLayout),
+		k,
+	}, " "))
+	if err != nil {
+		return "", err
+	}
+	return s + fmt.Sprintf("%X", crc32.ChecksumIEEE([]byte(s))), nil
+}
+
+func Validate(cert string) (*KeySpan, error) {
+	const cLen = 208
+	if len(cert) < cLen {
+		return nil, ErrIncomplete
+	}
+	chksum := fmt.Sprintf("%X", crc32.ChecksumIEEE([]byte(cert[:cLen])))
+	if chksum != cert[cLen:] {
+		return nil, ErrChecksum
+	}
+	secret, err := decryptString(cert[:cLen])
+	if err != nil {
+		return nil, err
+	}
+	if len(secret) < 40 {
+		return nil, ErrBadSecret
+	}
+	til := len(tokenLayout)
+	from, err := time.Parse(tokenLayout, secret[:til])
+	if err != nil {
+		return nil, err
+	}
+	til++
+	to, err := time.Parse(tokenLayout, secret[til:til+len(tokenLayout)])
+	if err != nil {
+		return nil, err
+	}
+
+	return &KeySpan{from, to}, nil
+}
+
+var (
+	// to change without modifying the code:
+	// go build/test/install -ldflags "-X encrypt.salty my-new-salt-string"
+	salty       = "add salt to taste"
+	private_key []byte
 )
 
 func SetKey(key_text string) {
@@ -26,54 +100,56 @@ func SetKey(key_text string) {
 	private_key = []byte(fmt.Sprintf("%x", h.Sum(nil)))
 }
 
-func encodeBase64(b []byte) string {
-	return base64.StdEncoding.EncodeToString(b)
-}
-
-func decodeBase64(s string) []byte {
-	data, err := base64.StdEncoding.DecodeString(s)
-	if err != nil {
-		panic(err)
+func keyGen() (string, error) {
+	data := make([]byte, 10)
+	if _, err := rand.Read(data); err != nil {
+		return "", err
 	}
-	return data
+	return fmt.Sprintf("%x", sha256.Sum256(data)), nil
 }
 
-func encryptString(text string) string {
-    return encodeBase64(encrypt(private_key, []byte(text)))
+func encryptString(text string) (string, error) {
+	c, err := encrypt(private_key, []byte(text))
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(c), nil
 }
 
-func decryptString(text string) string {
-    data := decodeBase64(text)
-    return string(decrypt(private_key, data))
+func decryptString(text string) (string, error) {
+	data, err := base64.StdEncoding.DecodeString(text)
+	d, err := decrypt(private_key, data)
+	return string(d), err
 }
 
-func encrypt(key, text []byte) []byte {
+func encrypt(key, text []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		panic(err)
+		return []byte{}, err
 	}
-	b := encodeBase64(text)
+	b := base64.StdEncoding.EncodeToString(text)
 	ciphertext := make([]byte, aes.BlockSize+len(b))
 	iv := ciphertext[:aes.BlockSize]
 	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
-		panic(err)
+		return ciphertext, err
 	}
 	cfb := cipher.NewCFBEncrypter(block, iv)
 	cfb.XORKeyStream(ciphertext[aes.BlockSize:], []byte(b))
-	return ciphertext
+	return ciphertext, nil
 }
 
-func decrypt(key, text []byte) string {
+func decrypt(key, text []byte) (string, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 	if len(text) < aes.BlockSize {
-		panic("ciphertext too short")
+		return "", ErrCipherText
 	}
 	iv := text[:aes.BlockSize]
 	text = text[aes.BlockSize:]
 	cfb := cipher.NewCFBDecrypter(block, iv)
 	cfb.XORKeyStream(text, text)
-	return string(decodeBase64(string(text)))
+	s, err := base64.StdEncoding.DecodeString(string(text))
+	return string(s), err
 }
