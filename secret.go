@@ -88,7 +88,7 @@ func Validate(cert string) (*KeySpan, error) {
 
 var (
 	// to change without modifying the code:
-	// go build/test/install -ldflags "-X encrypt.salty my-new-salt-string"
+	// go build/test/install -ldflags "-X secrets.salty my-new-salt-string"
 	salty       = "add salt to taste"
 	private_key []byte
 )
