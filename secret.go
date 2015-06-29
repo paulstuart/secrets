@@ -32,11 +32,11 @@ var (
 
 // Time period the cert is valid for
 type KeySpan struct {
-	from, to time.Time
+	From, To time.Time
 }
 
 func (k KeySpan) String() string {
-	return fmt.Sprintf("FROM:%s TO:%s\n", k.from.Format(tokenLayout), k.to.Format(tokenLayout))
+	return fmt.Sprintf("FROM:%s TO:%s\n", k.From.Format(tokenLayout), k.To.Format(tokenLayout))
 }
 
 // create a "certificate hash) that includes the time it is valid for
