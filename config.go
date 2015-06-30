@@ -33,15 +33,15 @@ func (config Remote) Dump() {
 
 func (config Remote) Private() {
 	for k := range config.Remote {
-		config.Remote[k].Username, _ = encryptString(config.Remote[k].Username)
-		config.Remote[k].Password, _ = encryptString(config.Remote[k].Password)
+		config.Remote[k].Username, _ = EncryptString(config.Remote[k].Username)
+		config.Remote[k].Password, _ = EncryptString(config.Remote[k].Password)
 	}
 }
 
 func (config Remote) Public() {
 	for k := range config.Remote {
-		config.Remote[k].Username, _ = decryptString(config.Remote[k].Username)
-		config.Remote[k].Password, _ = decryptString(config.Remote[k].Password)
+		config.Remote[k].Username, _ = DecryptString(config.Remote[k].Username)
+		config.Remote[k].Password, _ = DecryptString(config.Remote[k].Password)
 	}
 }
 

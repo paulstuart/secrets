@@ -45,7 +45,7 @@ func NewCert(from, to time.Time) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	s, err := encryptString(strings.Join([]string{
+	s, err := EncryptString(strings.Join([]string{
 		from.Format(tokenLayout),
 		to.Format(tokenLayout),
 		k,
@@ -65,7 +65,7 @@ func Validate(cert string) (*KeySpan, error) {
 	if chksum != cert[cLen:] {
 		return nil, ErrChecksum
 	}
-	secret, err := decryptString(cert[:cLen])
+	secret, err := DecryptString(cert[:cLen])
 	if err != nil {
 		return nil, err
 	}
@@ -108,21 +108,21 @@ func keyGen() (string, error) {
 	return fmt.Sprintf("%x", sha256.Sum256(data)), nil
 }
 
-func encryptString(text string) (string, error) {
-	c, err := encrypt(private_key, []byte(text))
+func EncryptString(text string) (string, error) {
+	c, err := Encrypt(private_key, []byte(text))
 	if err != nil {
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(c), nil
 }
 
-func decryptString(text string) (string, error) {
+func DecryptString(text string) (string, error) {
 	data, err := base64.StdEncoding.DecodeString(text)
-	d, err := decrypt(private_key, data)
+	d, err := Decrypt(private_key, data)
 	return string(d), err
 }
 
-func encrypt(key, text []byte) ([]byte, error) {
+func Encrypt(key, text []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return []byte{}, err
@@ -138,7 +138,7 @@ func encrypt(key, text []byte) ([]byte, error) {
 	return ciphertext, nil
 }
 
-func decrypt(key, text []byte) (string, error) {
+func Decrypt(key, text []byte) (string, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return "", err
