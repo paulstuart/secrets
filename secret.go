@@ -41,7 +41,7 @@ func (k KeySpan) String() string {
 
 // create a "certificate hash) that includes the time it is valid for
 func NewCert(from, to time.Time) (string, error) {
-	k, err := keyGen()
+	k, err := KeyGen()
 	if err != nil {
 		return "", err
 	}
@@ -100,7 +100,7 @@ func SetKey(key_text string) {
 	private_key = []byte(fmt.Sprintf("%x", h.Sum(nil)))
 }
 
-func keyGen() (string, error) {
+func KeyGen() (string, error) {
 	data := make([]byte, 10)
 	if _, err := rand.Read(data); err != nil {
 		return "", err
