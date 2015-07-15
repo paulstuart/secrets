@@ -25,3 +25,21 @@ func TestKey(t *testing.T) {
 		t.Error("plaintext not recovered")
 	}
 }
+
+func TestStrings(t *testing.T) {
+	plaintext := "some really really really long plaintext"
+	ciphertext, err := EncryptString(plaintext)
+	if err != nil {
+		t.Error(err)
+	}
+	if ciphertext == plaintext {
+		t.Error("plaintext not converted")
+	}
+	result, err := DecryptString(ciphertext)
+	if err != nil {
+		t.Error(err)
+	}
+	if result != plaintext {
+		t.Error("plaintext not recovered")
+	}
+}

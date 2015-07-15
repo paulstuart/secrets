@@ -118,6 +118,9 @@ func EncryptString(text string) (string, error) {
 
 func DecryptString(text string) (string, error) {
 	data, err := base64.StdEncoding.DecodeString(text)
+	if err != nil {
+		return "", err
+	}
 	d, err := Decrypt(private_key, data)
 	return string(d), err
 }
