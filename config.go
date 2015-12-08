@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"code.google.com/p/gcfg"
+	gcfg "gopkg.in/gcfg.v1"
 )
 
 type Creds struct {
